@@ -1,0 +1,58 @@
+---
+title: "Untitled"
+author: "James"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Use `tidync` to work with .nc files
+# https://github.com/ropensci/tidync
+library(tidync)
+
+library(tidyverse)
+```
+
+```{r}
+# SST data can be downloaded from: https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.highres.html
+# or specific data (time, area) can be downloaded from: https://psl.noaa.gov/mddb2/makePlot.html?variableID=4115&fileID=1062611
+download.file(
+  "https://downloads.psl.noaa.gov//Datasets/noaa.oisst.v2.highres/sst.day.mean.2020.nc",
+  "data/raw/sst.2020.nc")
+```
+
+```{r}
+# Read data
+df <- tidync("data/raw/sst.2020.nc") |>
+  # Filter data for a specific region
+  hyper_filter(
+    lon = between(lon, 95, 105), 
+    lat = between(lat, 5, 15)) |>
+  # Convert to a tibble/data.frame
+  hyper_tibble(force = TRUE) |> 
+  # Convert time to an actual data
+  #   time appears to be seconds ssince 1800 rather than the standard 1978 epoch
+  mutate(t = as.Date(time, origin = "1800-01-01")) |>
+  filter(t == "2020-01-05") |>
+  arrange(desc(time))
+
+# Plot data with ggplot
+df |>
+  ggplot(aes(x = lon, y = lat)) +
+  geom_tile(aes(fill = sst)) +
+  scale_fill_viridis_c() +
+  coord_quickmap(expand = F) +
+  labs(x = NULL, y = NULL, fill = "SST (°C)") +
+  theme(legend.position = "bottom") +
+  ggtitle("Sea Surface Temperature", subtitle ="Thailand, 2020-01-05")
+
+```
+## References
+
+https://ajsmit.netlify.app/project/oisst_prep/
+https://robwschlegel.github.io/heatwaveR/articles/OISST_preparation.html
+https://cran.r-project.org/web/packages/heatwaveR/vignettes/OISST_preparation.html
+https://theoceancode.netlify.app/post/dl_env_data_r/
+
